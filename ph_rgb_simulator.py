@@ -59,6 +59,25 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+    # --- 新增漸層色條 ---
+    ph_range = np.linspace(1, 13, 100)
+    gradient = [
+        f'rgb({int(np.clip(poly2(p, *params_r), 0, 255))},'
+        f'{int(np.clip(poly2(p, *params_g), 0, 255))},'
+        f'{int(np.clip(poly2(p, *params_b), 0, 255))})'
+        for p in ph_range
+    ]
+    gradient_css = ','.join(gradient)
+    st.markdown(
+        f"""
+        <div style="width:100%;height:30px;
+                    background: linear-gradient(to right, {gradient_css});
+                    border-radius:6px;border:1px solid #aaa;margin-top:5px;">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 # --- 主內容 ---
 col1, col2 = st.columns(2)
 
@@ -95,7 +114,6 @@ with col2:
                  s=40, label='資料點')
     ax3d.scatter(r, g, b, s=100, c=[[r/255, g/255, b/255]], edgecolors='black', label='目前點')
 
-    # 計算置中邊界
     r_min, r_max = center_axis(np.concatenate([r_values, [r]]))
     g_min, g_max = center_axis(np.concatenate([g_values, [g]]))
     b_min, b_max = center_axis(np.concatenate([b_values, [b]]))
@@ -106,7 +124,6 @@ with col2:
     ax3d.set_xlabel("R")
     ax3d.set_ylabel("G")
     ax3d.set_zlabel("B")
-
     ax3d.set_box_aspect([
         r_max - r_min,
         g_max - g_min,
