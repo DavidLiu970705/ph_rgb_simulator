@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.optimize import curve_fit
+import io
 
 st.set_page_config(page_title="pH 與 RGB 對應模擬器", layout="wide")
 
@@ -59,7 +60,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-    # --- 新增漸層色條 ---
+    # 漸層色條
     ph_range = np.linspace(1, 13, 100)
     gradient = [
         f'rgb({int(np.clip(poly2(p, *params_r), 0, 255))},'
@@ -81,10 +82,11 @@ with st.sidebar:
 # --- 主內容 ---
 col1, col2 = st.columns(2)
 
+# --- 2D 曲線圖 ---
 with col1:
     st.subheader("pH 對 RGB 曲線圖")
     x_plot = np.linspace(1, 13, 200)
-    fig, ax = plt.subplots()
+    fig2d, ax = plt.subplots()
     ax.plot(x_plot, poly2(x_plot, *params_r), 'r-', label='R')
     ax.plot(x_plot, poly2(x_plot, *params_g), 'g-', label='G')
     ax.plot(x_plot, poly2(x_plot, *params_b), 'b-', label='B')
@@ -96,13 +98,19 @@ with col1:
     ax.set_ylabel("RGB 值")
     ax.legend()
     plt.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
+    st.pyplot(fig2d)
 
+    # 匯出 2D 圖
+    buffer2d = io.BytesIO()
+    fig2d.savefig(buffer2d, format='png')
+    st.download_button("下載 2D 曲線圖", data=buffer2d.getvalue(), file_name="ph_rgb_2d.png", mime="image/png")
+    plt.close(fig2d)
+
+# --- 3D 圖 ---
 with col2:
     st.subheader("RGB 三維分布圖")
-    fig_3d = plt.figure()
-    ax3d = fig_3d.add_subplot(111, projection='3d')
+    fig3d = plt.figure()
+    ax3d = fig3d.add_subplot(111, projection='3d')
 
     r_curve = poly2(x_plot, *params_r)
     g_curve = poly2(x_plot, *params_g)
@@ -129,13 +137,18 @@ with col2:
         g_max - g_min,
         b_max - b_min
     ])
-
     plt.tight_layout()
-    st.pyplot(fig_3d)
-    plt.close(fig_3d)
+    st.pyplot(fig3d)
 
-# --- 匯出功能 ---
+    # 匯出 3D 圖
+    buffer3d = io.BytesIO()
+    fig3d.savefig(buffer3d, format='png')
+    st.download_button("下載 3D 分布圖", data=buffer3d.getvalue(), file_name="ph_rgb_3d.png", mime="image/png")
+    plt.close(fig3d)
+
+# --- 匯出 CSV ---
 st.download_button("匯出目前 RGB 成 CSV",
                    data=f"pH,R,G,B\n{ph_input},{r},{g},{b}",
                    file_name="ph_rgb.csv",
                    mime="text/csv")
+
