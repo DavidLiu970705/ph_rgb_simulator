@@ -6,11 +6,13 @@ from scipy.optimize import curve_fit
 
 st.set_page_config(page_title="pH 與 RGB 對應模擬器", layout="wide")
 
+# 原始數據
 ph_values = np.array([1.4, 1.4, 2.4, 2.4, 3.4, 3.4, 4.4, 4.4, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12])
 r_values = np.array([111, 110, 78, 73, 46, 52, 30, 32, 50, 59, 29, 39, 30, 26, 44, 42, 35, 47])
 g_values = np.array([39, 38, 35, 28, 33, 42, 49, 50, 70, 74, 47, 55, 48, 44, 71, 70, 37, 51])
 b_values = np.array([59, 58, 62, 57, 63, 75, 63, 64, 81, 79, 59, 70, 60, 58, 78, 74, 23, 37])
 
+# 二次曲線擬合
 def poly2(x, a, b, c):
     return a * x**2 + b * x + c
 
@@ -24,7 +26,7 @@ def get_rgb(ph):
     b = int(np.clip(poly2(ph, *params_b), 0, 255))
     return r, g, b
 
-# --- 左邊欄 ---
+# --- 側邊欄 ---
 with st.sidebar:
     st.title("pH 控制面板")
     ph_input = st.slider("選擇 pH 值", 1.0, 13.0, 7.0, step=0.01)
@@ -36,12 +38,14 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-# --- 主內容 ---
+# --- 主區域 ---
 col1, col2 = st.columns(2)
 
+# --- 左側曲線圖 ---
 with col1:
     st.subheader("pH 對 RGB 曲線圖")
     x_plot = np.linspace(1, 13, 200)
+
     fig, ax = plt.subplots()
     ax.plot(x_plot, poly2(x_plot, *params_r), 'r-', label='R')
     ax.plot(x_plot, poly2(x_plot, *params_g), 'g-', label='G')
@@ -57,13 +61,17 @@ with col1:
     st.pyplot(fig)
     plt.close(fig)
 
+# --- 右側 RGB 3D 圖與漸層 ---
 with col2:
     st.subheader("RGB 三維曲線圖")
+    view_option = st.radio("選擇視角", ["側視圖", "俯視圖"], horizontal=True)
+
     fig_3d = plt.figure()
     ax3d = fig_3d.add_subplot(111, projection='3d')
     r_curve = poly2(x_plot, *params_r)
     g_curve = poly2(x_plot, *params_g)
     b_curve = poly2(x_plot, *params_b)
+
     ax3d.plot(r_curve, g_curve, b_curve, label="RGB Curve", color="black")
     ax3d.scatter(*get_rgb(ph_input), s=100, c=[[r/255, g/255, b/255]])
     ax3d.set_xlabel("R")
@@ -72,37 +80,22 @@ with col2:
     ax3d.set_xlim(0, 120)
     ax3d.set_ylim(0, 120)
     ax3d.set_zlim(0, 120)
+
+    # 根據選擇的視角調整顯示
+    if view_option == "側視圖":
+        ax3d.view_init(elev=30, azim=120)
+    elif view_option == "俯視圖":
+        ax3d.view_init(elev=90, azim=-90)
+
     plt.tight_layout()
     st.pyplot(fig_3d)
     plt.close(fig_3d)
 
-# --- 側拍檢視功能 ---
-st.subheader("側拍檢視（附近變化）")
-delta_range = np.linspace(ph_input - 0.5, ph_input + 0.5, 9)
-delta_range = np.clip(delta_range, 1.0, 13.0)
-color_boxes = ""
-for ph in delta_range:
-    r1, g1, b1 = get_rgb(ph)
-    color_boxes += f"""
-    <div style="display:inline-block;margin:2px;text-align:center">
-        <div style="width:40px;height:40px;background:#{r1:02x}{g1:02x}{b1:02x};border-radius:6px;border:1px solid #aaa"></div>
-        <div style="font-size:10px">pH {ph:.2f}</div>
-    </div>
-    """
-st.markdown(f'<div style="display:flex;gap:5px">{color_boxes}</div>', unsafe_allow_html=True)
-
-# --- 漸層圖功能 ---
-st.subheader("pH→RGB 漸層顏色帶")
-gradient_phs = np.linspace(1.0, 13.0, 200)
-gradient_colors = [f"#{get_rgb(ph)[0]:02x}{get_rgb(ph)[1]:02x}{get_rgb(ph)[2]:02x}" for ph in gradient_phs]
-gradient_style = f"linear-gradient(to right, {', '.join(gradient_colors)});"
-st.markdown(
-    f'<div style="height:40px;border-radius:10px;border:1px solid #999;background: {gradient_style};"></div>',
-    unsafe_allow_html=True
-)
-
-# --- 匯出 CSV ---
-st.download_button("匯出目前 RGB 成 CSV", 
-                   data=f"pH,R,G,B\n{ph_input},{r},{g},{b}", 
-                   file_name="ph_rgb.csv",
-                   mime="text/csv")
+    st.subheader("RGB 漸層預覽")
+    gradient = np.linspace(1, 13, 500)
+    rgb_gradient = np.array([get_rgb(ph) for ph in gradient]) / 255.0
+    fig_grad, ax_grad = plt.subplots(figsize=(6, 1))
+    ax_grad.imshow([rgb_gradient], aspect='auto')
+    ax_grad.axis('off')
+    st.pyplot(fig_grad)
+    plt.close(fig_grad)
