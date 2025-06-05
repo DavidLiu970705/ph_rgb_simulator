@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.optimize import curve_fit
 import io
+import matplotlib
+
+# 設定中文字體與避免負號亂碼
+matplotlib.rcParams['font.family'] = 'Microsoft JhengHei'  # Windows 字體，macOS/Linux 請換成可用字體
+matplotlib.rcParams['axes.unicode_minus'] = False
 
 st.set_page_config(page_title="pH 與 RGB 對應模擬器", layout="wide")
 
@@ -149,7 +154,6 @@ with col2:
 # --- 蝶豆花花青素吸收峰波長圖 ---
 st.subheader("蝶豆花花青素在不同 pH 下的吸收光線波長與對應色光")
 
-# pH 範圍與對應吸收峰波長（模擬資料）
 ph_peak_values = list(range(1, 15))
 peak_wavelengths = [
     530, 530, 540, 550, 560, 580,
@@ -208,6 +212,9 @@ ax_peak.plot(ph_peak_values, peak_wavelengths, color="gray", linestyle="--", lab
 
 for phv, wl, color in zip(ph_peak_values, peak_wavelengths, absorb_colors):
     ax_peak.scatter(phv, wl, color=color, s=100, edgecolor='black')
+
+# 加入垂直線標示目前 pH
+ax_peak.axvline(ph_input, color='red', linestyle='--', label=f'目前 pH = {ph_input:.2f}')
 
 ax_peak.set_title("蝶豆花花青素在不同 pH 下的吸收光線波長與對應色光", fontsize=14)
 ax_peak.set_xlabel("pH 值", fontsize=12)
