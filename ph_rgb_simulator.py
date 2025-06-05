@@ -1,25 +1,14 @@
+
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.optimize import curve_fit
 import io
-import matplotlib
-import platform
-
-# 自動偵測系統並設定適當字體
-if platform.system() == "Windows":
-    matplotlib.rcParams['font.family'] = 'Microsoft JhengHei'
-elif platform.system() == "Darwin":  # macOS
-    matplotlib.rcParams['font.family'] = 'Apple LiGothic'  # macOS 的常用中文字體
-else:
-    matplotlib.rcParams['font.family'] = 'Noto Sans CJK TC'  # Ubuntu 常見中文字體（需安裝）
-
-matplotlib.rcParams['axes.unicode_minus'] = False
 
 st.set_page_config(page_title="pH 與 RGB 對應模擬器", layout="wide")
 
-# --- 原始資料 ---
+# --- 原始資料：兩組 ---
 ph_data_dict = {
     "垂拍": {
         "ph": np.array([1.4, 1.4, 2.4, 2.4, 3.4, 3.4, 4.4, 4.4, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12]),
@@ -52,6 +41,7 @@ with st.sidebar:
     data = ph_data_dict[dataset]
     ph_values, r_values, g_values, b_values = data["ph"], data["r"], data["g"], data["b"]
 
+    # 模型擬合
     params_r, _ = curve_fit(poly2, ph_values, r_values)
     params_g, _ = curve_fit(poly2, ph_values, g_values)
     params_b, _ = curve_fit(poly2, ph_values, b_values)
@@ -71,6 +61,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+    # 漸層色條
     ph_range = np.linspace(1, 13, 100)
     gradient = [
         f'rgb({int(np.clip(poly2(p, *params_r), 0, 255))},'
@@ -110,6 +101,7 @@ with col1:
     plt.tight_layout()
     st.pyplot(fig2d)
 
+    # 匯出 2D 圖
     buffer2d = io.BytesIO()
     fig2d.savefig(buffer2d, format='png')
     st.download_button("下載 2D 曲線圖", data=buffer2d.getvalue(), file_name="ph_rgb_2d.png", mime="image/png")
@@ -138,40 +130,25 @@ with col2:
     ax3d.set_xlim(r_min, r_max)
     ax3d.set_ylim(g_min, g_max)
     ax3d.set_zlim(b_min, b_max)
-
     ax3d.set_xlabel("R")
     ax3d.set_ylabel("G")
     ax3d.set_zlabel("B")
-    ax3d.legend()
+    ax3d.set_box_aspect([
+        r_max - r_min,
+        g_max - g_min,
+        b_max - b_min
+    ])
     plt.tight_layout()
     st.pyplot(fig3d)
 
+    # 匯出 3D 圖
     buffer3d = io.BytesIO()
     fig3d.savefig(buffer3d, format='png')
     st.download_button("下載 3D 分布圖", data=buffer3d.getvalue(), file_name="ph_rgb_3d.png", mime="image/png")
     plt.close(fig3d)
-    # 標出目前 pH 對應的 RGB 點
-    ax3d.scatter(r, g, b, color=f"#{r:02x}{g:02x}{b:02x}", s=100, edgecolors='k', label=f"pH={ph_input:.2f}")
 
-    # 圖例與標籤設定
-    ax3d.set_xlabel("R 值")
-    ax3d.set_ylabel("G 值")
-    ax3d.set_zlabel("B 值")
-    ax3d.set_title("RGB 空間曲線圖")
-    ax3d.legend()
-
-    # 自動調整座標軸範圍（加一點 margin）
-    rmin, rmax = center_axis(np.concatenate([r_curve, [r]]))
-    gmin, gmax = center_axis(np.concatenate([g_curve, [g]]))
-    bmin, bmax = center_axis(np.concatenate([b_curve, [b]]))
-
-    ax3d.set_xlim(rmin, rmax)
-    ax3d.set_ylim(gmin, gmax)
-    ax3d.set_zlim(bmin, bmax)
-
-    st.pyplot(fig3d)
-
-    buffer3d = io.BytesIO()
-    fig3d.savefig(buffer3d, format='png')
-    st.download_button("下載 RGB 空間圖", data=buffer3d.getvalue(), file_name="ph_rgb_3d.png", mime="image/png")
-    plt.close(fig3d)
+# --- 匯出 CSV ---
+st.download_button("匯出目前 RGB 成 CSV",
+                   data=f"pH,R,G,B\n{ph_input},{r},{g},{b}",
+                   file_name="ph_rgb.csv",
+                   mime="text/csv")
