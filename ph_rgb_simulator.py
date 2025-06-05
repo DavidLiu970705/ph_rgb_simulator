@@ -5,9 +5,16 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.optimize import curve_fit
 import io
 import matplotlib
+import platform
 
-# 全局設定中文字體與避免負號亂碼，請確保系統有此字型
-matplotlib.rcParams['font.family'] = 'Microsoft JhengHei'  # Windows 可用字型，macOS/Linux 請換成系統字型名稱
+# 自動偵測系統並設定適當字體
+if platform.system() == "Windows":
+    matplotlib.rcParams['font.family'] = 'Microsoft JhengHei'
+elif platform.system() == "Darwin":  # macOS
+    matplotlib.rcParams['font.family'] = 'Apple LiGothic'  # macOS 的常用中文字體
+else:
+    matplotlib.rcParams['font.family'] = 'Noto Sans CJK TC'  # Ubuntu 常見中文字體（需安裝）
+
 matplotlib.rcParams['axes.unicode_minus'] = False
 
 st.set_page_config(page_title="pH 與 RGB 對應模擬器", layout="wide")
@@ -45,7 +52,6 @@ with st.sidebar:
     data = ph_data_dict[dataset]
     ph_values, r_values, g_values, b_values = data["ph"], data["r"], data["g"], data["b"]
 
-    # 模型擬合
     params_r, _ = curve_fit(poly2, ph_values, r_values)
     params_g, _ = curve_fit(poly2, ph_values, g_values)
     params_b, _ = curve_fit(poly2, ph_values, b_values)
@@ -65,7 +71,6 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-    # 漸層色條
     ph_range = np.linspace(1, 13, 100)
     gradient = [
         f'rgb({int(np.clip(poly2(p, *params_r), 0, 255))},'
@@ -133,14 +138,11 @@ with col2:
     ax3d.set_xlim(r_min, r_max)
     ax3d.set_ylim(g_min, g_max)
     ax3d.set_zlim(b_min, b_max)
+
     ax3d.set_xlabel("R")
     ax3d.set_ylabel("G")
     ax3d.set_zlabel("B")
-    ax3d.set_box_aspect([
-        r_max - r_min,
-        g_max - g_min,
-        b_max - b_min
-    ])
+    ax3d.legend()
     plt.tight_layout()
     st.pyplot(fig3d)
 
@@ -148,84 +150,28 @@ with col2:
     fig3d.savefig(buffer3d, format='png')
     st.download_button("下載 3D 分布圖", data=buffer3d.getvalue(), file_name="ph_rgb_3d.png", mime="image/png")
     plt.close(fig3d)
+    # 標出目前 pH 對應的 RGB 點
+    ax3d.scatter(r, g, b, color=f"#{r:02x}{g:02x}{b:02x}", s=100, edgecolors='k', label=f"pH={ph_input:.2f}")
 
-# --- 蝶豆花花青素吸收峰波長圖 ---
-st.subheader("蝶豆花花青素在不同 pH 下的吸收光線波長與對應色光")
+    # 圖例與標籤設定
+    ax3d.set_xlabel("R 值")
+    ax3d.set_ylabel("G 值")
+    ax3d.set_zlabel("B 值")
+    ax3d.set_title("RGB 空間曲線圖")
+    ax3d.legend()
 
-ph_peak_values = list(range(1, 15))
-peak_wavelengths = [
-    530, 530, 540, 550, 560, 580,
-    605, 615, 625, 635, 645,
-    425, 425, 425
-]
+    # 自動調整座標軸範圍（加一點 margin）
+    rmin, rmax = center_axis(np.concatenate([r_curve, [r]]))
+    gmin, gmax = center_axis(np.concatenate([g_curve, [g]]))
+    bmin, bmax = center_axis(np.concatenate([b_curve, [b]]))
 
-def wavelength_to_rgb(wavelength):
-    gamma = 0.8
-    intensity_max = 1
-    factor = 0.0
-    R = G = B = 0.0
+    ax3d.set_xlim(rmin, rmax)
+    ax3d.set_ylim(gmin, gmax)
+    ax3d.set_zlim(bmin, bmax)
 
-    if 380 <= wavelength <= 440:
-        R = -(wavelength - 440) / (440 - 380)
-        G = 0.0
-        B = 1.0
-    elif 440 <= wavelength <= 490:
-        R = 0.0
-        G = (wavelength - 440) / (490 - 440)
-        B = 1.0
-    elif 490 <= wavelength <= 510:
-        R = 0.0
-        G = 1.0
-        B = -(wavelength - 510) / (510 - 490)
-    elif 510 <= wavelength <= 580:
-        R = (wavelength - 510) / (580 - 510)
-        G = 1.0
-        B = 0.0
-    elif 580 <= wavelength <= 645:
-        R = 1.0
-        G = -(wavelength - 645) / (645 - 580)
-        B = 0.0
-    elif 645 <= wavelength <= 780:
-        R = 1.0
-        G = 0.0
-        B = 0.0
+    st.pyplot(fig3d)
 
-    if 380 <= wavelength <= 420:
-        factor = 0.3 + 0.7 * (wavelength - 380) / (420 - 380)
-    elif 420 <= wavelength <= 700:
-        factor = 1.0
-    elif 700 <= wavelength <= 780:
-        factor = 0.3 + 0.7 * (780 - wavelength) / (780 - 700)
-
-    R = round(intensity_max * R * factor, 3)
-    G = round(intensity_max * G * factor, 3)
-    B = round(intensity_max * B * factor, 3)
-
-    return (R, G, B)
-
-absorb_colors = [wavelength_to_rgb(wl) for wl in peak_wavelengths]
-
-fig_peak, ax_peak = plt.subplots(figsize=(10, 6))
-ax_peak.plot(ph_peak_values, peak_wavelengths, color="gray", linestyle="--", label="平均吸收波長")
-
-for phv, wl, color in zip(ph_peak_values, peak_wavelengths, absorb_colors):
-    ax_peak.scatter(phv, wl, color=color, s=100, edgecolor='black')
-
-# 加入垂直線標示目前 pH
-ax_peak.axvline(ph_input, color='red', linestyle='--', label=f'目前 pH = {ph_input:.2f}')
-
-ax_peak.set_title("蝶豆花花青素在不同 pH 下的吸收光線波長與對應色光", fontsize=14)
-ax_peak.set_xlabel("pH 值", fontsize=12)
-ax_peak.set_ylabel("吸收峰值（nm）", fontsize=12)
-ax_peak.grid(True)
-ax_peak.set_xticks(ph_peak_values)
-ax_peak.legend()
-plt.tight_layout()
-
-st.pyplot(fig_peak)
-
-# --- 匯出 CSV ---
-st.download_button("匯出目前 RGB 成 CSV",
-                   data=f"pH,R,G,B\n{ph_input},{r},{g},{b}",
-                   file_name="ph_rgb.csv",
-                   mime="text/csv")
+    buffer3d = io.BytesIO()
+    fig3d.savefig(buffer3d, format='png')
+    st.download_button("下載 RGB 空間圖", data=buffer3d.getvalue(), file_name="ph_rgb_3d.png", mime="image/png")
+    plt.close(fig3d)
