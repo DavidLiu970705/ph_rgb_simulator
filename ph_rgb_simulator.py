@@ -6,14 +6,13 @@ from scipy.optimize import curve_fit
 import io
 import matplotlib
 
-# 全局設定中文字體與避免負號亂碼
-# 請確認你的系統有安裝此字型，或依環境調整字型名稱
-matplotlib.rcParams['font.sans-serif'] = ['Microsoft JhengHei']  # Windows常用中文字型
+# 全局設定中文字體與避免負號亂碼，請確保系統有此字型
+matplotlib.rcParams['font.family'] = 'Microsoft JhengHei'  # Windows 可用字型，macOS/Linux 請換成系統字型名稱
 matplotlib.rcParams['axes.unicode_minus'] = False
 
 st.set_page_config(page_title="pH 與 RGB 對應模擬器", layout="wide")
 
-# --- 原始資料：兩組 ---
+# --- 原始資料 ---
 ph_data_dict = {
     "垂拍": {
         "ph": np.array([1.4, 1.4, 2.4, 2.4, 3.4, 3.4, 4.4, 4.4, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12]),
@@ -106,7 +105,6 @@ with col1:
     plt.tight_layout()
     st.pyplot(fig2d)
 
-    # 匯出 2D 圖
     buffer2d = io.BytesIO()
     fig2d.savefig(buffer2d, format='png')
     st.download_button("下載 2D 曲線圖", data=buffer2d.getvalue(), file_name="ph_rgb_2d.png", mime="image/png")
@@ -146,7 +144,6 @@ with col2:
     plt.tight_layout()
     st.pyplot(fig3d)
 
-    # 匯出 3D 圖
     buffer3d = io.BytesIO()
     fig3d.savefig(buffer3d, format='png')
     st.download_button("下載 3D 分布圖", data=buffer3d.getvalue(), file_name="ph_rgb_3d.png", mime="image/png")
