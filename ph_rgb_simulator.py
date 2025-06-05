@@ -6,8 +6,9 @@ from scipy.optimize import curve_fit
 import io
 import matplotlib
 
-# 設定中文字體與避免負號亂碼
-matplotlib.rcParams['font.family'] = 'Microsoft JhengHei'  # Windows 字體，macOS/Linux 請換成可用字體
+# 全局設定中文字體與避免負號亂碼
+# 請確認你的系統有安裝此字型，或依環境調整字型名稱
+matplotlib.rcParams['font.sans-serif'] = ['Microsoft JhengHei']  # Windows常用中文字型
 matplotlib.rcParams['axes.unicode_minus'] = False
 
 st.set_page_config(page_title="pH 與 RGB 對應模擬器", layout="wide")
